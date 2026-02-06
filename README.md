@@ -10,7 +10,7 @@
 
 ## Overview
 
-A comprehensive analysis framework for spatial transcriptomics data, with primary focus on 10x Genomics Xenium platform. The repository provides both Nextflow-based and R-based workflows for processing and analyzing spatial single-cell data.
+A comprehensive analysis framework for spatial transcriptomics data, with primary focus on 10x Genomics Xenium platform. The repository provides both Nextflow-based and R-based containerized workflows for processing and analyzing spatial single-cell data.
 
 ### Repository Structure
 
@@ -19,49 +19,59 @@ nnclinssoap/
 ├── docker/                    # Container definitions (Dockerfiles & Apptainer .def)
 │   ├── preprocessing/         # QC, doublet detection, ambient RNA removal
 │   ├── analysis/              # Cell annotation, differential expression
-│   └── spatialxenium/        # Xenium-specific spatial analysis
+│   └── spatialxenium/         # Xenium-specific spatial analysis
+│   └── qc-report/             # QC reporting for SpatialXenium
 ├── containers/                # Built Singularity images (.sif files)
-├── SpatialXenium/            # Nextflow pipeline (nf-core style)
-├── scrnaseq/                 # R-based pipeline using whirl
-├── test_data/                # Test datasets (gitignored, auto-downloaded)
-└── tests/                    # Testing scripts and validation
+├── SpatialXenium/             # Nextflow pipeline (nf-core style)
+├── scrnaseq/                  # R-based pipeline using whirl
+├── tests/                     # Testing scripts and validation
+└── docs/                      # Documentation and guides
 ```
 
 ---
 
-## Quick Start
+## Quick Start (Test case executed locally)
 
-### 1. Check Prerequisites
+### 1. Download Test Data
 ```bash
-./docker/check_build_prerequisites.sh
+./setup_test_data.sh
 ```
 
 ### 2. Build Containers
 ```bash
 cd docker
-sbatch build_all_images.sh  # SLURM
-# Or: bash build_all_images.sh  # Interactive
+./build_all_images.sh -v docker
 
 # Builds 4 containers: preprocessing, analysis, spatialxenium, qc-report
-# Total time: ~6-8 hours (parallelizable)
+# Total time: ~3-6 hours (parallelizable)
 ```
 
-### 3. Download Test Data
+### 3. Run sc/snRNA-seq Pipeline
 ```bash
-./setup_test_data.sh
+cd scrnaseq
+./run_preprocessing_containerized.sh
+./run_analysis_containerized.sh
 ```
 
-### 4. Run Pipeline
+### 4. Run SpatialXenium Pipeline
 ```bash
 cd SpatialXenium
-nextflow run main.nf -profile test,singularity --outdir test_results
+nextflow run main.nf -profile test,docker --outdir test_results
 ```
-
-**Full guide:** See [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
 
 ---
 
 ## Pipelines
+
+### scrnaseq (R-based)
+
+**Purpose:** Flexible R workflow for single-cell analysis  
+**Framework:** whirl package  
+**Workflows:**
+- Preprocessing: QC, doublet detection, batch correction
+- Analysis: Cell annotation, differential expression
+
+**Documentation:** [`scrnaseq/README.md`](scrnaseq/README.md)
 
 ### SpatialXenium (Nextflow)
 
@@ -75,16 +85,6 @@ nextflow run main.nf -profile test,singularity --outdir test_results
 
 **Documentation:** [`SpatialXenium/README.md`](SpatialXenium/README.md)
 
-### scrnaseq (R-based)
-
-**Purpose:** Flexible R workflow for single-cell analysis  
-**Framework:** whirl package  
-**Workflows:**
-- Preprocessing: QC, doublet detection, batch correction
-- Analysis: Cell annotation, differential expression
-
-**Documentation:** [`scrnaseq/README.md`](scrnaseq/README.md)
-
 ---
 
 ## Container Images
@@ -93,29 +93,12 @@ All R-based containers use **R 4.5.2** with **Bioconductor 3.22**
 
 | Container | Purpose | Key Packages | Size |
 |-----------|---------|--------------|------|
-| **preprocessing** | QC & batch correction | Seurat, SoupX, scDblFinder, harmony | ~1.7 GB |
-| **analysis** | Annotation & DE | Azimuth, SingleR, edgeR, Signac | ~2.6 GB |
-| **spatialxenium** | Spatial analysis | presto, Seurat, argparser, arrow, spatstat | ~2.0 GB |
-| **qc-report** | QC PDF generation | Python 3.11, fpdf2 | ~62 MB |
+| **preprocessing** | QC & batch correction | Seurat, SoupX, scDblFinder, harmony | ~8.09 GB |
+| **analysis** | Annotation & DE | Azimuth, SingleR, edgeR, Signac | ~10.97 GB |
+| **spatialxenium** | Spatial analysis | presto, Seurat, argparser, arrow, spatstat | ~7.95 GB |
+| **qc-report** | QC PDF generation | Python 3.11, fpdf2 | ~0.3 GB |
 
 **Build documentation:** [`docker/BUILD_GUIDE.md`](docker/BUILD_GUIDE.md)
-
----
-
-## Testing
-
-### Quick Test
-```bash
-./test_spatialxenium_quick.sh
-```
-
-### Full Pipeline Test
-```bash
-cd SpatialXenium
-nextflow run main.nf -profile test,singularity --outdir test_results
-```
-
-**Testing guide:** [`docs/TESTING_GUIDE.md`](docs/TESTING_GUIDE.md)
 
 ---
 
@@ -125,22 +108,19 @@ nextflow run main.nf -profile test,singularity --outdir test_results
 |----------|-------------|
 | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) | One-page quick reference |
 | [`docs/TESTING_GUIDE.md`](docs/TESTING_GUIDE.md) | Complete testing procedures |
-| [`docs/EXECUTIVE_SUMMARY.md`](docs/EXECUTIVE_SUMMARY.md) | Project status and accomplishments |
-| [`docs/PR_SUMMARY.md`](docs/PR_SUMMARY.md) | Pull request summary and checklist |
 | [`docker/BUILD_GUIDE.md`](docker/BUILD_GUIDE.md) | Container build guide |
-| [`docs/DOCKER_TO_PIPELINE_INTEGRATION_ANALYSIS.md`](docs/DOCKER_TO_PIPELINE_INTEGRATION_ANALYSIS.md) | Technical analysis & architecture |
 
 ---
 
 ## Requirements
 
 ### System
-- Linux OS (tested on SLURM HPC)
-- 16+ GB RAM (32+ GB recommended)
-- 20+ GB disk space for containers and test data
+- Linux/Windows/Mac (tested on MacOS Tahoe 26.1 and SLURM HPC)
+- 18+ GB RAM (32+ GB recommended)
+- 40+ GB disk space for containers and test data
 
 ### Software
-- Apptainer/Singularity ≥3.8
+- Docker or Apptainer/Singularity ≥3.8
 - Nextflow ≥23.10.0
 - Standard Linux tools (wget/curl, unzip, tar)
 
@@ -149,6 +129,7 @@ nextflow run main.nf -profile test,singularity --outdir test_results
 ## Data Sources
 
 ### Test Data (Auto-downloaded)
+- **scRNA-seq:** 4 single-cell h5 matrixes (10x Genomics)
 - **Non-diseased kidney:** Xenium V1 human kidney (10x Genomics)
 - **Cancer kidney:** Xenium V1 kidney cancer (10x Genomics)
 - **Total size:** ~6 GB
@@ -159,86 +140,7 @@ nextflow run main.nf -profile test,singularity --outdir test_results
 
 ---
 
-## Usage Examples
-
-### Basic Xenium Processing
-```bash
-cd SpatialXenium
-nextflow run main.nf \
-    -profile singularity \
-    --input samplesheet.csv \
-    --outdir results
-```
-
-### With Reference-based Annotation
-```bash
-nextflow run main.nf \
-    -profile singularity \
-    --input samplesheet.csv \
-    --reference_rds kidney_reference.rds \
-    --single_cell_label_col "cell_type" \
-    --outdir results
-```
-
-### With Gene List for Feature Plots
-```bash
-nextflow run main.nf \
-    -profile singularity \
-    --input samplesheet.csv \
-    --genes genes.txt \
-    --outdir results
-```
-
----
-
-## Input Format
-
-### Samplesheet (CSV)
-```csv
-sample,xenium_path
-sample1,/path/to/xenium/output
-sample2,/path/to/xenium/output
-```
-
-### Gene List (TXT)
-```
-GENE1
-GENE2
-GENE3
-```
-
----
-
-## Output Structure
-
-```
-results/
-├── sample1/
-│   ├── seurat_xenium/
-│   │   ├── sample1_processed.rds      # Seurat object
-│   │   ├── QC_plots.png               # Quality control
-│   │   └── session_info.txt           # R session info
-│   └── label_transfer/                # If reference provided
-│       ├── sample1_labeled.rds
-│       └── celltype_predictions.csv
-└── pipeline_info/
-    ├── execution_report.html          # Resource usage
-    ├── execution_timeline.html        # Timeline
-    └── execution_trace.txt            # Detailed trace
-```
-
----
-
 ## Development
-
-### Repository is Publication-Ready
-
-All code and documentation designed for technical publication:
-- ✅ Portable paths (no hard-coded external dependencies)
-- ✅ Comprehensive documentation
-- ✅ Reproducible builds with version control
-- ✅ Test data auto-download
-- ✅ Validation and testing framework
 
 ### Contributing
 
@@ -272,7 +174,7 @@ tail SpatialXenium/.nextflow.log
 nextflow run main.nf -profile test,singularity -resume
 ```
 
-**Full troubleshooting:** See [`TESTING_GUIDE.md`](TESTING_GUIDE.md#common-issues-and-solutions)
+**Full troubleshooting:** See [`TESTING_GUIDE.md`](docker/TESTING_GUIDE.md#common-issues-and-solutions)
 
 ---
 
@@ -283,13 +185,14 @@ If you use this pipeline in your research, please cite:
 ```
 [Citation information to be added upon publication]
 ```
+Pre-print available at [bioRxiv](https://www.biorxiv.org/content/10.64898/2026.01.23.701261v1)
 
 ---
 
 ## License
 
-Code - Apache License 2.0
-Documentation - CC BY 4.0
+- Code - Apache License 2.0
+- Documentation - CC BY 4.0
 
 ---
 
@@ -310,4 +213,4 @@ Documentation - CC BY 4.0
 ---
 
 **Version:** 1.0  
-**Last Updated:** January 23, 2026
+**Last Updated:** February 4, 2026
