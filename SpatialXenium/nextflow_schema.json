@@ -253,6 +253,12 @@
           "default": 8000000000,
           "fa_icon": "fas fa-memory"
         },
+        "seed": {
+          "type": "integer",
+          "description": "Random seed used by all stochastic steps (PCA, UMAP, clustering, anchor finding) to ensure run-to-run reproducibility.",
+          "default": 42,
+          "minimum": 0
+        },
         "validationFailUnrecognisedParams": {
           "type": "boolean",
           "description": "Allow or disallow unrecognised parameters in pipeline. If false, unrecognised params raise only a warning.",
