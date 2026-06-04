@@ -312,6 +312,46 @@ transfer_labels <- function(seurat_obj,
   seurat_obj$filtered_celltype <- seurat_obj$predicted_celltype
   seurat_obj$filtered_celltype[seurat_obj$probability_celltype < min_probability] <- "Ambiguous" # nolint
 
+  # Get all cell types for consistent coloring
+  all_celltypes <- unique(c(
+    as.character(seurat_obj@meta.data$predicted_celltype),
+    as.character(seurat_obj@meta.data$filtered_celltype)
+  ))
+
+  # Set consistent factor levels for both celltype columns
+  seurat_obj@meta.data$predicted_celltype <- factor(
+    seurat_obj@meta.data$predicted_celltype,
+    levels = all_celltypes
+  )
+  seurat_obj@meta.data$filtered_celltype <- factor(
+    seurat_obj@meta.data$filtered_celltype,
+    levels = all_celltypes
+  )
+
+  # Polychrome palette36.colors replacement
+  palette36_colors <- function(n) {
+    polychrome_palette <- c(
+      "#5A5156", "#E66100", "#5D3A9B", "#6A9A1F", "#FFB300", "#E41A1C",
+      "#C2B280", "#FF9DA7", "#00BFC4", "#B2DF8A", "#F0E442", "#B15928",
+      "#F28500", "#A6CEE3", "#B3B3B3", "#FB9A99", "#CAB2D6", "#FDBF6F",
+      "#FF7F00", "#6A3D9A", "#FFFF99", "#BEBADA", "#1F78B4", "#33A02C",
+      "#A6D854", "#FFD92F", "#E5C494", "#B3DE69", "#BC80BD", "#CCEBC5",
+      "#8DD3C7", "#FFFFB3", "#FB8072", "#80B1D3", "#FDB462", "#BEBADA"
+    )
+    if (n <= length(polychrome_palette)) {
+      return(polychrome_palette[1:n])
+    } else {
+      # Generate additional colors by interpolating from the base palette
+      color_func <- grDevices::colorRampPalette(polychrome_palette)
+      return(color_func(n))
+    }
+  }
+
+  # Create consistent color palette for all cell types
+  n_celltypes <- length(all_celltypes)
+  celltype_colors <- palette36_colors(n_celltypes)
+  names(celltype_colors) <- all_celltypes
+    
   plot_bar(
     seurat_obj@meta.data,
     "predicted_celltype",
@@ -347,7 +387,7 @@ transfer_labels <- function(seurat_obj,
     seurat_obj,
     reduction = "umap",
     group.by = "predicted_celltype",
-    cols = "polychrome"
+    cols = celltype_colors
   ) + ggplot2::ggtitle(sample_name)
   ggplot2::ggsave(
     predcell_umap,
@@ -361,7 +401,7 @@ transfer_labels <- function(seurat_obj,
     seurat_obj,
     fov = gsub("-", "_", paste0("sample_", sample_name, "_fov")),
     group.by = "predicted_celltype",
-    cols = "polychrome"
+    cols = celltype_colors
   ) + ggplot2::ggtitle(sample_name)
   ggplot2::ggsave(
     spat,
@@ -380,7 +420,7 @@ transfer_labels <- function(seurat_obj,
     seurat_obj,
     reduction = "umap",
     group.by = "filtered_celltype",
-    cols = "polychrome"
+    cols = celltype_colors
   ) + ggplot2::ggtitle(sample_name)
   ggplot2::ggsave(
     predcell_umap,
@@ -394,7 +434,7 @@ transfer_labels <- function(seurat_obj,
     seurat_obj,
     fov = gsub("-", "_", paste0("sample_", sample_name, "_fov")),
     group.by = "filtered_celltype",
-    cols = "polychrome"
+    cols celltype_colors
   ) + ggplot2::ggtitle(sample_name)
   ggplot2::ggsave(
     spat,
