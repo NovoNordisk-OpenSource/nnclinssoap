@@ -149,6 +149,13 @@ parse_command_line <- function() {
     default = NULL,
     help = "Metadata to merge with the by sample QC metrics file - expecting a csv with one row of sample characteristics. Default = NULL" # nolint
   )
+  parser <- argparser::add_argument(
+    parser, 
+    "--seed",
+    type = "integer",
+    default = 42, 
+    help = "Random seed for reproducibility (PCA, UMAP, clustering)"
+  )
   # I'm not sure what parameter will work best here
   # so lets make it easy to adjust as needed
   parser <- argparser::add_argument(
@@ -875,7 +882,8 @@ run_seurat <- function(seurat_obj,
                        n_high_var_genes = 1000,
                        neigh_umap_dims = 1:30,
                        cluster_res = 0.6,
-                       cluster_algo = 1) {
+                       cluster_algo = 1,
+                       seed = 42) {
 
   seurat_obj <- Seurat::NormalizeData(
     seurat_obj,
@@ -890,18 +898,24 @@ run_seurat <- function(seurat_obj,
   seurat_obj <- Seurat::ScaleData(seurat_obj)
   seurat_obj <- Seurat::RunPCA(
     seurat_obj,
-    features = Seurat::VariableFeatures(object = seurat_obj)
+    features = Seurat::VariableFeatures(object = seurat_obj),
+    seed.use = seed
   )
   seurat_obj <- Seurat::FindNeighbors(
     seurat_obj,
     dims = neigh_umap_dims,
     reduction = "pca"
   )
-  seurat_obj <- Seurat::RunUMAP(seurat_obj, dims = neigh_umap_dims)
+  seurat_obj <- Seurat::RunUMAP(
+    seurat_obj, 
+    dims = neigh_umap_dims, 
+    seed.use = seed
+    )
   seurat_obj <- Seurat::FindClusters(
     seurat_obj,
     resolution = cluster_res,
-    algorithm = cluster_algo
+    algorithm = cluster_algo,
+    random.seed = seed
   )
   return(seurat_obj)
 }
@@ -1049,6 +1063,9 @@ Process_Individual_Xenium_Sample <- function() { # nolint
   #checks input data for issues and checks key files exist
   args <- validate_input_data(args)
 
+  #sets RNG seed for reproducibility across all stochastic steps 
+  set.seed(args$seed)
+
   #create new folders if needed within the out directory to keep things tidy
   folders <- c("plots/PC_plots",
                "plots/initial_QC/",
@@ -1120,7 +1137,8 @@ Process_Individual_Xenium_Sample <- function() { # nolint
 
   #normalize and create low dimensional embeddings of data
   sample_data <- run_seurat(sample_data,
-                            n_high_var_genes = args$n_highly_var_genes)
+                            n_high_var_genes = args$n_highly_var_genes,
+                            seed = args$seed)
 
 
   markers_wide <- get_cell_markers(sample_data,
