@@ -434,7 +434,7 @@ transfer_labels <- function(seurat_obj,
     seurat_obj,
     fov = gsub("-", "_", paste0("sample_", sample_name, "_fov")),
     group.by = "filtered_celltype",
-    cols celltype_colors
+    cols = celltype_colors
   ) + ggplot2::ggtitle(sample_name)
   ggplot2::ggsave(
     spat,
