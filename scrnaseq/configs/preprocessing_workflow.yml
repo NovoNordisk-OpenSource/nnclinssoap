@@ -37,6 +37,19 @@ ManifestPath: "configs/read_samples.txt"
 QCPath: "output/qc"
 SeuratPath: "output/seurat_object.rds"
 
+# Manifest column names 
+participant_col: "participant"
+visit_col: "visit"
+arm_col: "arm"
+sex_col: "sex"
+age_col: "age"
+
+# Allowed values for the visit and arm columns
+baseline_visit: "bl"
+followup_visit: "eot"
+reference_arm: "placebo"
+treatment_arm: "treatment"
+
 # Cell annotation
 CellAnnotationPath: "output/cell_annotation"
 annotation_method: "Azimuth"
