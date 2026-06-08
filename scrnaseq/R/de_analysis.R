@@ -19,6 +19,15 @@ library(tibble)
 yml <- yaml::read_yaml("configs/preprocessing_workflow.yml")
 s <- readRDS(yml$SeuratPath)
 
+# Default-fallback helper for optional YAML keys
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+# Resolve allowed values for the visit and arm columns (defaults match prior hardcoded behaviour)
+baseline_visit <- yml$baseline_visit %||% "bl"
+followup_visit <- yml$followup_visit %||% "eot"
+reference_arm  <- yml$reference_arm  %||% "placebo"
+treatment_arm  <- yml$treatment_arm  %||% "treatment"
+
 resultspath <-  yml$DEPath
 dir.create(resultspath, showWarnings = FALSE, recursive = TRUE)
 
@@ -45,8 +54,8 @@ run_edgeR <- function(seurat.obj, cell_type, resultspath) {
   # Subset remaining samples
   s_subset <- subset(s_celltype, subset = patient_id %in% keep_samples)
 
-  if (length(unique(s_subset$patient_id[s_subset$arm == "placebo"])) < 2 ||
-      length(unique(s_subset$patient_id[s_subset$arm == "treatment"])) < 2) {
+  if (length(unique(s_subset$patient_id[s_subset$arm == reference_arm])) < 2 ||
+      length(unique(s_subset$patient_id[s_subset$arm == treatment_arm])) < 2) {
     print("Not enough paired samples for this specific celltype")
     return(NULL)  # Skip the rest of the code
   }
@@ -74,9 +83,9 @@ run_edgeR <- function(seurat.obj, cell_type, resultspath) {
   meta$age <- split_df[, 5]       # Fifth element is age
 
   meta$arm <- factor(meta$arm)
-  meta$arm <- relevel(meta$arm, "placebo")
+  meta$arm <- relevel(meta$arm, reference_arm)
   meta$visit <- factor(meta$visit)
-  meta$visit <- relevel(meta$visit, "bl")
+  meta$visit <- relevel(meta$visit, baseline_visit)
   
   y <- DGEList(
     counts = pseudo_mat,
@@ -89,8 +98,8 @@ run_edgeR <- function(seurat.obj, cell_type, resultspath) {
   
   # Define the treatment effects for each arm
   # These will capture the Pre vs Post effect within each arm
-  placebo_post <- meta$arm == "placebo" & meta$visit == "eot"
-  trt_post <- meta$arm == "treatment" & meta$visit == "eot"
+  placebo_post <- meta$arm == reference_arm & meta$visit == followup_visit
+  trt_post <- meta$arm == treatment_arm & meta$visit == followup_visit
   
   # Add these effects to the design matrix
   design <- cbind(design, placebo_post, trt_post)
@@ -135,7 +144,7 @@ run_edgeR <- function(seurat.obj, cell_type, resultspath) {
     spag_plots <- lapply(genes, function(x) {
       plot_gene <- plot_data %>% filter(Gene == x)
       p <- ggplot(plot_gene) + 
-        aes(x = factor(visit, level = c("bl", "eot")), y = Expression) + 
+        aes(x = factor(visit, level = c(baseline_visit, followup_visit)), y = Expression) +
         geom_point(aes(group = patient_id), color = "grey80") +
         geom_line(aes(group = patient_id), color = "grey80") +
         stat_summary(geom = "point") +
