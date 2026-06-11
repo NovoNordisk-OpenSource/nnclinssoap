@@ -268,8 +268,7 @@ transfer_labels <- function(seurat_obj,
     query = seurat_obj,
     normalization.method = norm_meth,
     reference.reduction = reference_reduction,  # Use pre-computed PCA if available
-    features = Features(seurat_obj, assay = "Xenium"), # nolint
-    seed.use = seed
+    features = Features(seurat_obj, assay = "Xenium") # nolint
   )
 
   pred <- Seurat::TransferData(
@@ -581,9 +580,6 @@ p <- add_argument(p, "--seed", help = "Random seed for reproducibility (anchor f
 
 args <- parse_args(p)
 
-# Set RNG seed for reproducibility
-set.seed(args$seed)
-
 inrds <- args$inrds
 reference_rds <- args$reference_rds
 label_col <- args$label_col
@@ -591,6 +587,10 @@ outdir <- args$outdir
 sample_name <- args$sample_name
 min_prob <- args$min_celltype_probability
 future_mem_limit <- args$future_mem_limit
+seed <- args$seed
+
+# Set RNG seed for reproducibility
+set.seed(seed)
 
 check_file_exists(inrds, force_stop = TRUE)
 check_file_exists(reference_rds, force_stop = TRUE)
@@ -610,7 +610,7 @@ res <- transfer_labels(
   outdir = outdir,
   min_probability = min_prob,
   future_mem_limit = future_mem_limit,
-  seeding = args$seed
+  seed = seed
 )
 
 
