@@ -22,8 +22,47 @@ library(reshape2)
 # Read config file and create output folder
 yml <- read_yaml("configs/preprocessing_workflow.yml")
 
+# Default-fallback helper for optional YAML keys
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+# Resolve configurable manifest column names (default to current names if absent)
+participant_col <- yml$participant_col %||% "participant"
+visit_col       <- yml$visit_col       %||% "visit"
+arm_col         <- yml$arm_col         %||% "arm"
+sex_col         <- yml$sex_col         %||% "sex"
+age_col         <- yml$age_col         %||% "age"
+
+# Resolve allowed values for the visit and arm columns
+baseline_visit <- yml$baseline_visit %||% "bl"
+followup_visit <- yml$followup_visit %||% "eot"
+reference_arm  <- yml$reference_arm  %||% "placebo"
+treatment_arm  <- yml$treatment_arm  %||% "treatment"
+
 # Read manifest file to go through all samples
 sample_table <- read.table(yml$ManifestPath, header = TRUE)
+
+# Validate manifest: required columns present, and visit/arm contain exactly the two configured values
+required_cols <- c("key", "filepath", participant_col, visit_col, arm_col, sex_col, age_col)
+missing_cols  <- setdiff(required_cols, colnames(sample_table))
+if (length(missing_cols) > 0) {
+  stop("Manifest is missing required columns: ", paste(missing_cols, collapse = ", "))
+}
+
+visit_vals <- unique(sample_table[[visit_col]])
+arm_vals   <- unique(sample_table[[arm_col]])
+if (!setequal(visit_vals, c(baseline_visit, followup_visit))) {
+  stop(sprintf(
+    "Column '%s' must contain exactly the two values '%s' and '%s'; found: %s",
+    visit_col, baseline_visit, followup_visit, paste(visit_vals, collapse = ", ")
+  ))
+}
+if (!setequal(arm_vals, c(reference_arm, treatment_arm))) {
+  stop(sprintf(
+    "Column '%s' must contain exactly the two values '%s' and '%s'; found: %s",
+    arm_col, reference_arm, treatment_arm, paste(arm_vals, collapse = ", ")
+  ))
+}
+
 sample_ids <- sample_table$key
 sample_paths <- sample_table$filepath
 
@@ -208,11 +247,11 @@ read_data <- function(sample_path, sample_id) {
 
   # Add metadata
   cat("Adding metadata and QC metrics to the seurat object...\n")
-  s$patient_id <- sample_table$participant[sample_table$key == sample_id[1]]
-  s$visit <- sample_table$visit[sample_table$key == sample_id[1]]
-  s$arm <- sample_table$arm[sample_table$key == sample_id[1]]
-  s$age <- sample_table$age[sample_table$key == sample_id[1]]
-  s$sex <- sample_table$sex[sample_table$key == sample_id[1]]
+  s$patient_id <- sample_table[[participant_col]][sample_table$key == sample_id[1]]
+  s$visit      <- sample_table[[visit_col]][sample_table$key == sample_id[1]]
+  s$arm        <- sample_table[[arm_col]][sample_table$key == sample_id[1]]
+  s$age        <- sample_table[[age_col]][sample_table$key == sample_id[1]]
+  s$sex        <- sample_table[[sex_col]][sample_table$key == sample_id[1]]
 
   # Return the Seurat object and resultspath as a list
   rm(counts)
