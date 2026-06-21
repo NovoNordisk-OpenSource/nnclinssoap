@@ -117,7 +117,8 @@ transfer_labels <- function(seurat_obj,
                             future_mem_limit,
                             reference_assay = NULL,  # Auto-detect from reference
                             reference_layer = "counts",
-                            min_probability = .50) {
+                            min_probability = .50,
+                            seed = 42) {
 
   outdir <- add_back_slash(outdir)
   options(future.globals.maxSize = future_mem_limit)
@@ -615,6 +616,7 @@ p <- add_argument(p, "--outdir", help = "Output directory for results", type = "
 p <- add_argument(p, "--sample_name", help = "Sample name", type = "character")
 p <- add_argument(p, "--min_celltype_probability", help = "Minimum probability for cell type assignment", type = "double", default = 0.5) # nolint
 p <- add_argument(p, "--future_mem_limit", help = "Max memory for future package", type = "double", default = 8e9) # nolint
+p <- add_argument(p, "--seed", help = "Random seed for reproducibility (anchor finding, PCA)", type = "integer", default = 42)
 
 args <- parse_args(p)
 
@@ -625,7 +627,10 @@ outdir <- args$outdir
 sample_name <- args$sample_name
 min_prob <- args$min_celltype_probability
 future_mem_limit <- args$future_mem_limit
+seed <- args$seed
 
+# Set RNG seed for reproducibility
+set.seed(seed)
 
 check_file_exists(inrds, force_stop = TRUE)
 check_file_exists(reference_rds, force_stop = TRUE)
@@ -644,7 +649,8 @@ res <- transfer_labels(
   sample_name = sample_name,
   outdir = outdir,
   min_probability = min_prob,
-  future_mem_limit = future_mem_limit
+  future_mem_limit = future_mem_limit,
+  seed = seed
 )
 
 

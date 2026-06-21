@@ -32,6 +32,7 @@ process SEURAT_XENIUM {
         --max_reads_per_cell $params.max_reads_per_cell \\
         --max_control_prop_per_cell $params.max_control_prop_per_cell \\
         --n_highly_var_genes $params.n_highly_var_genes \\
+        --seed $params.seed \\
         $generic_name \\
 
     cat <<-END_VERSIONS > versions.yml

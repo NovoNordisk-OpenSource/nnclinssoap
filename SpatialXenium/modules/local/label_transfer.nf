@@ -27,7 +27,8 @@ process LABEL_TRANSFER {
         --outdir label_transfer \\
         --sample_name $meta.id\\
         --min_celltype_probability $params.min_celltype_probability \\
-        --future_mem_limit $params.future_mem_limit 
+        --future_mem_limit $params.future_mem_limit \\
+        --seed $params.seed
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
